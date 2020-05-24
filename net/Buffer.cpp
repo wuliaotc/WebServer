@@ -13,7 +13,7 @@ const char Buffer::kCRLF[] = "\r\n";
 ssize_t Buffer::readFd(int fd, int *savedErrno) {
     char extrabuf[65536];
     struct iovec vec[2];
-    const size_t writeable = writeableBytes();
+    const size_t writeable = writableBytes();
     vec[0].iov_base = beginWrite();
     vec[0].iov_len = writeable;
     vec[1].iov_base = extrabuf;
