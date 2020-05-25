@@ -7,7 +7,6 @@
 
 
 #include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <map>
 
 #include "Callbacks.h"
@@ -71,8 +70,8 @@ namespace reactor {
             WriteCompleteCallback writeCompleteCallback_;
             EventLoop *loop_;
             const std::string name_;
-            boost::scoped_ptr<Acceptor> acceptor_;
-            boost::scoped_ptr<EventLoopThreadPool> threadPool_;
+            std::unique_ptr<Acceptor> acceptor_;
+            std::unique_ptr<EventLoopThreadPool> threadPool_;
             bool started;
             int nextConnId_;
         };

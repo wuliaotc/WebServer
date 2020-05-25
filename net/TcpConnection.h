@@ -6,7 +6,6 @@
 #define WEBSERVER_TCPCONNECTION_H
 
 #include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <boost/any.hpp>
 #include <memory>
 #include <string>
@@ -100,8 +99,8 @@ namespace reactor {
             EventLoop *loop_;
             std::string name_;
             StateE state_;
-            boost::scoped_ptr<Socket> socket_;
-            boost::scoped_ptr<Channel> channel_;
+            std::unique_ptr<Socket> socket_;
+            std::unique_ptr<Channel> channel_;
             InetAddress localAddr_;
             InetAddress peerAddr_;
             Buffer inputBuffer_;

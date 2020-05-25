@@ -6,7 +6,6 @@
 #define WEBSERVER_CONNECTOR_H
 
 #include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <functional>
 
 #include "net/Callbacks.h"
@@ -66,7 +65,7 @@ namespace reactor {
             InetAddress serverAddr_;
             bool connect_;      // atomic
             States state_;      // FIXME: use atomic variable
-            boost::scoped_ptr<Channel> channel_;
+            std::unique_ptr<Channel> channel_;
             NewConnectionCallback newConnectionCallback_;
             int retryDelayMs_;
             TimerId timerId_;

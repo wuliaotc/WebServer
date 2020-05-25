@@ -7,7 +7,6 @@
 
 
 #include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <vector>
 #include <base/Timestamp.h>
 #include "base/Thread.h"
@@ -86,10 +85,10 @@ namespace reactor {
             const pid_t threadId_;
             reactor::Timestamp pollReturnTime_;
 
-            boost::scoped_ptr<Poller> poller_;
-            boost::scoped_ptr<TimerQueue> timerQueue_;
+            std::unique_ptr<Poller> poller_;
+            std::unique_ptr<TimerQueue> timerQueue_;
             int wakeupFd_;
-            boost::scoped_ptr<Channel> wakeupChannel_;
+            std::unique_ptr<Channel> wakeupChannel_;
 
             reactor::MutexLock mutex_;
             //exposed to other thread ,need protect
