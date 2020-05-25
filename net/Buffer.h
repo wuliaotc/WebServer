@@ -26,10 +26,10 @@ namespace reactor {
             static const size_t kCheapPrepend = 8;
             static const size_t kInitialSize = 1024;
 
-            Buffer(size_t initialSize=kInitialSize)
-                    :buffer_(kCheapPrepend +initialSize),
-                     readerIndex_(kCheapPrepend),
-                     writerIndex_(kCheapPrepend) {
+            Buffer(size_t initialSize = kInitialSize)
+                    : buffer_(kCheapPrepend + initialSize),
+                      readerIndex_(kCheapPrepend),
+                      writerIndex_(kCheapPrepend) {
                 assert(readableBytes() == 0);
                 assert(writableBytes() == initialSize);
                 assert(prependableBytes() == kCheapPrepend);
@@ -104,11 +104,10 @@ namespace reactor {
             }
 
             //append data
-            void append(const std::string &str) {
-                append(str.data(), str.length());
-            }
-            void append(const StringPiece& str)
-            {
+//            void append(const std::string &str) {
+//                append(str.data(), str.length());
+//            }
+            void append(const StringPiece &str) {
                 append(str.data(), str.size());
             }
 
@@ -157,8 +156,8 @@ namespace reactor {
             // greater than kInitialSize+kCheapPrepend
             // for less growth occur
             void shrink(size_t reserve) {
-                Buffer other(std::max(readableBytes()+reserve,kInitialSize));
-                other.append(begin()+readerIndex_,readableBytes());
+                Buffer other(std::max(readableBytes() + reserve, kInitialSize));
+                other.append(begin() + readerIndex_, readableBytes());
                 swap(other);
             }
 
