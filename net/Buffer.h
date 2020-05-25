@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <base/StringPiece.h>
 
 namespace reactor {
 ///
@@ -25,12 +26,12 @@ namespace reactor {
             static const size_t kCheapPrepend = 8;
             static const size_t kInitialSize = 1024;
 
-            Buffer()
-                    : buffer_(kCheapPrepend + kInitialSize),
-                      readerIndex_(kCheapPrepend),
-                      writerIndex_(kCheapPrepend) {
+            Buffer(size_t initialSize=kInitialSize)
+                    :buffer_(kCheapPrepend +initialSize),
+                     readerIndex_(kCheapPrepend),
+                     writerIndex_(kCheapPrepend) {
                 assert(readableBytes() == 0);
-                assert(writableBytes() == kInitialSize);
+                assert(writableBytes() == initialSize);
                 assert(prependableBytes() == kCheapPrepend);
             }
 
@@ -106,6 +107,10 @@ namespace reactor {
             void append(const std::string &str) {
                 append(str.data(), str.length());
             }
+            void append(const StringPiece& str)
+            {
+                append(str.data(), str.size());
+            }
 
             //append data
             void append(const char *data, size_t len) {
@@ -148,21 +153,13 @@ namespace reactor {
 
             // move readable bytes to front
             // and ensure reserve for write
-            //TODO:利用栈上对象还是原地迁移
+            // but the sizeof buffer must
+            // greater than kInitialSize+kCheapPrepend
+            // for less growth occur
             void shrink(size_t reserve) {
-                int readable = readableBytes();
-
-                std::copy(peek(), peek() + readable,
-                          buffer_.begin() + kCheapPrepend);
-
-
-                int newSize = kInitialSize + kCheapPrepend;
-                if (kCheapPrepend + readable + reserve > newSize)
-                    newSize = kCheapPrepend + readable + reserve;
-                buffer_.resize(newSize);// O(n)
-                readerIndex_ = kCheapPrepend;
-                writerIndex_ = readerIndex_ + readable;
-                buffer_.shrink_to_fit();//O(n)
+                Buffer other(std::max(readableBytes()+reserve,kInitialSize));
+                other.append(begin()+readerIndex_,readableBytes());
+                swap(other);
             }
 
             // read from fd
@@ -171,10 +168,14 @@ namespace reactor {
             ssize_t readFd(int fd, int *savedErrno);
 
         private:
+            //only used by shrink ,to minimum memory alloc
+            //ensure new Buffer has max(writable,kInitialSize) writableBytes
+
             // return buffer_.begin()
             char *begin() { return &(*buffer_.begin()); }
 
             const char *begin() const { return &(*buffer_.begin()); }
+            //internal use
 
             // try to make more space to store len bytes
             void makeSpace(size_t len) {
