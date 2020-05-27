@@ -25,7 +25,8 @@ namespace reactor {
         const int kSmallBuffer = 4000;
         const int kLargeBuffer = 4000 * 1000;
 
-        template<int SIZE>
+
+        template<int SIZE>// buffer size
         class FixedBuffer : noncopyable {
         public:
             FixedBuffer()
@@ -87,7 +88,8 @@ namespace reactor {
         };
 
     }  // namespace detail
-
+    // 主要是对operator的封装和整数的格式转换
+    // 结果放入buffer_
     class LogStream : noncopyable {
         typedef LogStream self;
     public:
@@ -176,7 +178,8 @@ namespace reactor {
 
         static const int kMaxNumericSize = 32;
     };
-
+    //generate formatting str for T
+    // T is arithmetic
     class Fmt // : noncopyable
     {
     public:

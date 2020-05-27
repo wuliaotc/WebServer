@@ -58,7 +58,7 @@ namespace reactor {
         Logger(SourceFile file, int line, LogLevel level, const char *func);
 
         Logger(SourceFile file, int line, bool toAbort);
-
+        //when deconstruct,all content output to g_output
         ~Logger();
 
         LogStream &stream() { return impl_.stream_; }
@@ -78,7 +78,7 @@ namespace reactor {
         static void setTimeZone(const TimeZone &tz);
 
     private:
-
+        // for format message
         class Impl {
         public:
             typedef Logger::LogLevel LogLevel;
@@ -123,6 +123,9 @@ namespace reactor {
 //   else
 //     logWarnStream << "Bad news";
 //
+//
+
+// generate a temporary logger for logging
 #define LOG_TRACE if (reactor::Logger::logLevel() <= reactor::Logger::TRACE) \
   reactor::Logger(__FILE__, __LINE__, reactor::Logger::TRACE, __func__).stream()
 #define LOG_DEBUG if (reactor::Logger::logLevel() <= reactor::Logger::DEBUG) \
