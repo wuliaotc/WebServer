@@ -11,10 +11,11 @@
 #include<string>
 #include<memory>
 #include<atomic>
+#include"base/noncopyable.h"
 
 namespace reactor {
 
-    class Thread {
+    class Thread :reactor::noncopyable{
     public:
         using ThreadFunc = std::function<void()>;
 
