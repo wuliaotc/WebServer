@@ -80,7 +80,7 @@ using namespace reactor;
 
 pid_t CurrentThread::tid() {
     if (t_cachedTid == 0) {
-        t_cachedTid = gettid();
+        t_cachedTid = reactor::detail::gettid();
         t_tidStringLength = snprintf(t_tidString, sizeof(t_tidString), "%5d",
                                      t_cachedTid);
     }
