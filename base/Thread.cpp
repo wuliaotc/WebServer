@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 namespace reactor {
     namespace CurrentThread {
@@ -16,56 +17,64 @@ namespace reactor {
     }
 } // namespace reactor
 namespace {
-    __thread pid_t t_cachedTid = 0;
-
-    void afterFork() {
-        t_cachedTid = gettid();
-        reactor::CurrentThread::t_threadName = "main";
-    }
-
-    class ThreadNameInitializer {
-    public:
-        ThreadNameInitializer() {
+    namespace detail {
+        __thread pid_t t_cachedTid = 0;
+        pid_t gettid()
+        {
+            return static_cast<pid_t>(::syscall(SYS_gettid));
+        }
+        void afterFork() {
+            t_cachedTid = detail::gettid();
             reactor::CurrentThread::t_threadName = "main";
-            pthread_atfork(NULL, NULL, &afterFork);
         }
-    };
 
-    ThreadNameInitializer init;
-
-    struct ThreadData {
-        //TODO: ThreadDdata类的作用
-        using ThreadFunc = reactor::Thread::ThreadFunc;
-        ThreadFunc func_;
-        std::string name_;
-        std::weak_ptr<pid_t> wkTid;
-
-        ThreadData(const ThreadFunc &func, const std::string &name,
-                   const std::shared_ptr<pid_t> &tid)
-                : func_(func), name_(name), wkTid(tid) {}
-
-        void runInThread() {
-            pid_t tid = reactor::CurrentThread::tid();
-            std::shared_ptr<pid_t> ptid = wkTid.lock();
-            if (ptid) {
-                *ptid = tid;
-                ptid.reset();
+        class ThreadNameInitializer {
+        public:
+            ThreadNameInitializer() {
+                reactor::CurrentThread::t_threadName = "main";
+                pthread_atfork(NULL, NULL, &afterFork);
             }
-            reactor::CurrentThread::t_threadName =
-                    name_.empty() ? "muduoThread" : name_.c_str();
-            ::prctl(PR_SET_NAME, reactor::CurrentThread::t_threadName);
-            func_();
-            reactor::CurrentThread::t_threadName = "finished";
+        };
+
+        ThreadNameInitializer init;
+
+        struct ThreadData {
+            //TODO: ThreadDdata类的作用
+            using ThreadFunc = reactor::Thread::ThreadFunc;
+            ThreadFunc func_;
+            std::string name_;
+            std::weak_ptr<pid_t> wkTid;
+
+            ThreadData(const ThreadFunc &func, const std::string &name,
+                       const std::shared_ptr<pid_t> &tid)
+                    : func_(func), name_(name), wkTid(tid) {}
+
+
+            void runInThread() {
+                pid_t tid = reactor::CurrentThread::tid();
+                std::shared_ptr<pid_t> ptid = wkTid.lock();
+                if (ptid) {
+                    *ptid = tid;
+                    ptid.reset();
+                }
+                reactor::CurrentThread::t_threadName =
+                        name_.empty() ? "muduoThread" : name_.c_str();
+                ::prctl(PR_SET_NAME, reactor::CurrentThread::t_threadName);
+                func_();
+                reactor::CurrentThread::t_threadName = "finished";
+            }
+
+
+        };
+
+        void *startThread(void *obj) {
+            ThreadData *data = static_cast<ThreadData *>(obj);
+            data->runInThread();
+            delete data;
+            return NULL;
         }
-
-    };
-
-    void *startThread(void *obj) {
-        ThreadData *data = static_cast<ThreadData *>(obj);
-        data->runInThread();
-        delete data;
-        return NULL;
     }
+
 } // namespace
 using namespace reactor;
 
@@ -102,6 +111,7 @@ Thread::Thread(const ThreadFunc &func, const std::string &name)
     Thread::numCreate_.fetch_add(1);
 }
 
+
 Thread::~Thread() {
     if (started_ && !joined_) {
         pthread_detach(PthreadId_);
@@ -112,8 +122,8 @@ void Thread::start() {
     assert(!started_);
     started_ = true;
 
-    ThreadData *data = new ThreadData(func_, name_, tid_);
-    if (pthread_create(&PthreadId_, NULL, &startThread, data) != 0) {
+    detail::ThreadData *data = new detail::ThreadData(func_, name_, tid_);
+    if (pthread_create(&PthreadId_, NULL, &detail::startThread, data) != 0) {
         started_ = false;
         delete data;
         abort();
