@@ -9,7 +9,7 @@
 #include "base/copyable.h"
 #include "base/Timestamp.h"
 #include "base/Types.h"
-
+#include <assert.h>
 namespace reactor {
     namespace net {
         class HttpRequest : public reactor::copyable {
