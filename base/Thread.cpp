@@ -16,7 +16,7 @@ namespace reactor {
         __thread int t_tidStringLength;
     }
 } // namespace reactor
-namespace {
+namespace reactor{
     namespace detail {
         __thread pid_t t_cachedTid = 0;
         pid_t gettid()
