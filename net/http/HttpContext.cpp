@@ -60,7 +60,7 @@ bool HttpContext::parseRequest (Buffer *buf, Timestamp receiveTime){
                 ok = processRequestLine(buf->peek(), crlf);
                 if (ok) {
                     request_.setReceiveTime(receiveTime);
-                    buf->retrieveUntil(crlf);
+                    buf->retrieveUntil(crlf+2);
                     state_=kExpectHeaders;
                 }
                 else{
