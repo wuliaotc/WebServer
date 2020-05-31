@@ -5,102 +5,92 @@
 #ifndef WEBSERVER_EVENTLOOP_H
 #define WEBSERVER_EVENTLOOP_H
 
-
+#include "base/Condition.h"
+#include "base/Thread.h"
+#include "net/Callbacks.h"
+#include "net/TimerId.h"
+#include <base/Timestamp.h>
 #include <boost/noncopyable.hpp>
 #include <vector>
-#include <base/Timestamp.h>
-#include "base/Thread.h"
-#include "net/TimerId.h"
-#include "net/Callbacks.h"
-#include "base/Condition.h"
 
 namespace reactor {
-    namespace net {
-        class Channel;
+namespace net {
+class Channel;
 
-        class Poller;
+class Poller;
 
-        class TimerQueue;
+class TimerQueue;
 
-        class EventLoop : boost::noncopyable {
-        public:
-            using Functor = std::function<void()>;
+class EventLoop : boost::noncopyable {
+public:
+  using Functor = std::function<void()>;
 
-            EventLoop();
+  EventLoop();
 
-            ~EventLoop();
+  ~EventLoop();
 
-            void loop();
+  void loop();
 
-            void quit();
+  void quit();
 
-            void assertInLoopThread() {
-                if (!isInLoopThread()) {
-                    abortNotInLoopThread();
-                }
-            }
+  void assertInLoopThread() {
+    if (!isInLoopThread()) {
+      abortNotInLoopThread();
+    }
+  }
 
-            reactor::Timestamp
-            pollReturnTime() const { return pollReturnTime_; }
+  reactor::Timestamp pollReturnTime() const { return pollReturnTime_; }
 
-            TimerId
-            runAt(const reactor::Timestamp &time, const TimerCallback &cb);
+  TimerId runAt(const reactor::Timestamp &time, const TimerCallback &cb);
 
-            TimerId runAfter(double delay, const TimerCallback &cb);
+  TimerId runAfter(double delay, const TimerCallback &cb);
 
-            TimerId runEvery(double interval, const TimerCallback &cb);
+  TimerId runEvery(double interval, const TimerCallback &cb);
 
-            //wakeup EventLoop and call cb immediately
-            void runInLoop(const Functor &);
+  // wakeup EventLoop and call cb immediately
+  void runInLoop(const Functor &);
 
-            //queues callback in the loop thread
-            //runs after finish poll
-            void queueInLoop(const Functor &);
+  // queues callback in the loop thread
+  // runs after finish poll
+  void queueInLoop(const Functor &);
 
-            //internal
-            void wakeup();
+  // internal
+  void wakeup();
 
-            void updateChannel(Channel *);
+  void updateChannel(Channel *);
 
-            void removeChannel(Channel *);
+  void removeChannel(Channel *);
 
-            bool isInLoopThread() const {
-                return threadId_ == CurrentThread::tid();
-            }
+  bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
 
-            void cancel(TimerId timerId);
+  void cancel(TimerId timerId);
 
-        private:
-            using ChannelList = std::vector<Channel *>;
+private:
+  using ChannelList = std::vector<Channel *>;
 
-            void abortNotInLoopThread();
+  void abortNotInLoopThread();
 
-            void handleRead();//wakeup
-            void doPendingFunctors();
+  void handleRead(); // wakeup
+  void doPendingFunctors();
 
-            bool looping_; /* atomic */
-            bool quit_;
-            bool callingPendingFunctors_;/* atomic*/
+  bool looping_; /* atomic */
+  bool quit_;
+  bool callingPendingFunctors_; /* atomic*/
 
-            const pid_t threadId_;
-            reactor::Timestamp pollReturnTime_;
+  const pid_t threadId_;
+  reactor::Timestamp pollReturnTime_;
 
-            std::unique_ptr<Poller> poller_;
-            std::unique_ptr<TimerQueue> timerQueue_;
-            int wakeupFd_;
-            std::unique_ptr<Channel> wakeupChannel_;
+  std::unique_ptr<Poller> poller_;
+  std::unique_ptr<TimerQueue> timerQueue_;
+  int wakeupFd_;
+  std::unique_ptr<Channel> wakeupChannel_;
 
-            reactor::MutexLock mutex_;
-            //exposed to other thread ,need protect
-            std::vector<Functor> pendingFunctors_
-            GUARDED_BY(mutex_);
-            ChannelList activeChannels_;
+  reactor::MutexLock mutex_;
+  // exposed to other thread ,need protect
+  std::vector<Functor> pendingFunctors_ GUARDED_BY(mutex_);
+  ChannelList activeChannels_;
+};
+} // namespace net
+} // namespace reactor
 
-        };
-    }//namespace net
-}     // namespace reactor
-
-
-
-
-#endif //WEBSERVER_EVENTLOOP_H
+#endif // WEBSERVER_EVENTLOOP_H
