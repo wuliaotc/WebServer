@@ -25,7 +25,18 @@ TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr)
                                                   std::placeholders::_2));
 }
 
-TcpServer::~TcpServer() {}
+TcpServer::~TcpServer() {
+    loop_->assertInLoopThread();
+    LOG_TRACE << "TcpServer::~TcpServer [" << name_ << "] destructing";
+
+    for (auto& item : connections_)
+    {
+        TcpConnectionPtr conn(item.second);
+        item.second.reset();
+        conn->getLoop()->runInLoop(
+                std::bind(&TcpConnection::ConnectDestroyed, conn));
+    }
+}
 
 void TcpServer::start() {
     if (!started) {
@@ -44,7 +55,7 @@ void TcpServer::setThreadNum(int numThreads) {
 
 void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     loop_->assertInLoopThread();
-    char buf[32];
+    char buf[64];
     snprintf(buf, sizeof(buf), "#%d", nextConnId_);
     ++nextConnId_;
     std::string connName = name_ + buf;
@@ -62,7 +73,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     conn->setMessageCallback(messageCallback_);
     conn->setWriteCompleteCallback(writeCompleteCallback_);
     // FIXME: unsafe
-    conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, conn));
+    conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, std::placeholders::_1));
     ioLoop->runInLoop(std::bind(&TcpConnection::ConnectEstablished, conn));
 }
 
