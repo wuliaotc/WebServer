@@ -24,7 +24,7 @@ namespace reactor {
                                                              const InetAddress &)>;
 
             Acceptor(EventLoop *loop, const InetAddress &ListenAddr);
-
+            ~Acceptor();
             void setNewConnectionCallback(const NewConnectionCallback &cb) {
                 newConnectionCallback_ = cb;
             }
@@ -41,6 +41,8 @@ namespace reactor {
             Channel acceptChannel_;
             NewConnectionCallback newConnectionCallback_;
             bool listenning_;
+
+            int idleFd_;
         };
     }//namespace net
 }//namespace reactor

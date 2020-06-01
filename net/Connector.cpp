@@ -46,7 +46,7 @@ void Connector::startInLoop() {
 
 void Connector::connect() {
     int sockfd = sockets::createNonblockingOrDie();
-    int ret = sockets::connect(sockfd, &serverAddr_.getSockAddrInet());
+    int ret = sockets::connect(sockfd, serverAddr_.getSockAddrInet());
     int savedErrno = (ret == 0) ? 0 : errno;
     switch (savedErrno) {
         case 0:
@@ -163,7 +163,7 @@ void Connector::retry(int sockfd) {
     setState(kDisconnected);
     if (connect_) {
         LOG_INFO << "Connector::retry - Retry connecting to "
-                 << serverAddr_.toHostPort() << " in " << retryDelayMs_
+                 << serverAddr_.toIpPort() << " in " << retryDelayMs_
                  << " milliseconds. ";
         timerId_ = loop_->runAfter(retryDelayMs_ / 1000.0,      // FIXME: unsafe
                                    std::bind(&Connector::startInLoop, this));

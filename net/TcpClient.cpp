@@ -65,7 +65,7 @@ TcpClient::~TcpClient() {
 void TcpClient::connect() {
     // FIXME: check state
     LOG_INFO << "TcpClient::connect[" << this << "] - connecting to "
-             << connector_->serverAddress().toHostPort();
+             << connector_->serverAddress().toIpPort();
     connect_ = true;
     connector_->start();
 }
@@ -89,7 +89,7 @@ void TcpClient::newConnection(int sockfd) {
     loop_->assertInLoopThread();
     InetAddress peerAddr(sockets::getPeerAddr(sockfd));
     char buf[32];
-    snprintf(buf, sizeof buf, ":%s#%d", peerAddr.toHostPort().c_str(),
+    snprintf(buf, sizeof buf, ":%s#%d", peerAddr.toIpPort().c_str(),
              nextConnId_);
     ++nextConnId_;
     std::string connName = buf;
@@ -126,7 +126,7 @@ void TcpClient::removeConnection(const TcpConnectionPtr &conn) {
     loop_->queueInLoop(std::bind(&TcpConnection::ConnectDestroyed, conn));
     if (retry_ && connect_) {
         LOG_INFO << "TcpClient::connect[" << this << "] - Reconnecting to "
-                 << connector_->serverAddress().toHostPort();
+                 << connector_->serverAddress().toIpPort();
         connector_->restart();
     }
 }

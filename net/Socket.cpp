@@ -10,7 +10,7 @@
 
 using namespace reactor;
 using namespace reactor::net;
-Socket::~Socket() { ::close(sockfd_); }
+Socket::~Socket() { sockets::close(sockfd_); }
 
 void Socket::bindAddress(const InetAddress& addr) {
     sockets::bindOrDie(sockfd_, addr.getSockAddrInet());
@@ -19,11 +19,11 @@ void Socket::bindAddress(const InetAddress& addr) {
 void Socket::listen() { sockets::listenOrDie(sockfd_); }
 
 int Socket::accept(InetAddress* peeraddr) {
-    struct sockaddr_in addr;
+    struct sockaddr_in6 addr;
     bzero(&addr, sizeof addr);
     int connfd = sockets::accept(sockfd_, &addr);
     if (connfd >= 0) {
-        peeraddr->setSockAddrInet(addr);
+        peeraddr->setSockAddrInet6(addr);
     }
     return connfd;
 }

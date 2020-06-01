@@ -42,27 +42,31 @@ namespace reactor {
 
             int getSocketError(int sockfd);
 
-            void bindOrDie(int sockfd, const struct sockaddr_in &addr);
+            void bindOrDie(int sockfd, const struct sockaddr *addr);
 
             void listenOrDie(int sockfd);
 
-            int accept(int sockfd, struct sockaddr_in *addr);
+            int accept(int sockfd, struct sockaddr_in6 *addr);
 
-            int connect(int sockfd, const struct sockaddr_in *addr);
+            int connect(int sockfd, const struct sockaddr *addr);
 
             void close(int sockfd);
 
             void shutdownWrite(int sockfd);
 
-            void
-            toHostPort(char *buf, size_t size, const struct sockaddr_in &addr);
+            void toIp(char *buf, size_t size, const struct sockaddr *addr);
 
-            void fromHostPort(const char *ip, uint16_t port,
-                              struct sockaddr_in *addr);
+            void toIpPort(char *buf, size_t size, const struct sockaddr *addr);
 
-            struct sockaddr_in getLocalAddr(int sockfd);
+            void fromIpPort(const char *ip, uint16_t port,
+                            struct sockaddr_in *addr);
 
-            struct sockaddr_in getPeerAddr(int sockfd);
+            void fromIpPort(const char *ip, uint16_t port,
+                            struct sockaddr_in6 *addr6);
+
+            struct sockaddr_in6 getLocalAddr(int sockfd);
+
+            struct sockaddr_in6 getPeerAddr(int sockfd);
 
 // sockfd
             bool isSelfConnect(int sockfd);

@@ -3,8 +3,8 @@
 //
 #include "net/TcpConnection.h"
 
-#include <errno.h>
 #include <base/Logging.h>
+#include <errno.h>
 #include <stdio.h>
 
 #include <functional>
@@ -21,17 +21,17 @@ using namespace reactor::net;
 TcpConnection::TcpConnection(EventLoop *loop, const std::string &name,
                              int sockfd, const InetAddress &localAddr,
                              const InetAddress &peerAddr)
-        : loop_(loop),
-          name_(name),
-          state_(kConnecting),
-          localAddr_(localAddr),
-          peerAddr_(peerAddr),
-          socket_(new Socket(sockfd)),
+        : loop_(loop), name_(name), state_(kConnecting), localAddr_(localAddr),
+          peerAddr_(peerAddr), socket_(new Socket(sockfd)),
           channel_(new Channel(loop, sockfd)) {
-    LOG_DEBUG << "TcpConnection::ctor[" << name_ << "] at " << this
-              << " fd=" << sockfd;
     channel_->setReadCallback(
             std::bind(&TcpConnection::handleRead, this, std::placeholders::_1));
+    channel_->setWriteCallback(std::bind(&TcpConnection::handlewrite, this));
+    channel_->setCloseCallback(std::bind(&TcpConnection::handleClose, this));
+    channel_->setErrorCallback(std::bind(&TcpConnection::handleError, this));
+    LOG_DEBUG << "TcpConnection::ctor[" << name_ << "] at " << this
+              << " fd=" << sockfd;
+    socket_->setTcpKeepAlive(true);
 }
 
 TcpConnection::~TcpConnection() {}
@@ -154,7 +154,7 @@ void TcpConnection::send(const std::string &message) {
     }
 }
 
-//FIXME efficiency
+// FIXME efficiency
 void TcpConnection::send(Buffer &buf) {
     if (state_ == kConnected) {
         string message(buf.peek(), buf.readableBytes());
@@ -169,7 +169,7 @@ void TcpConnection::send(Buffer &buf) {
     }
 }
 
-//FIXME efficiency
+// FIXME efficiency
 void TcpConnection::sendInLoop(const std::string &message) {
     loop_->assertInLoopThread();
     ssize_t nwrote = 0;
@@ -197,4 +197,3 @@ void TcpConnection::sendInLoop(const std::string &message) {
         }
     }
 }
-

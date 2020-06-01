@@ -15,7 +15,7 @@ using namespace reactor::net;
 
 TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr)
         : loop_(loop),
-          name_(listenAddr.toHostPort()),
+          name_(listenAddr.toIpPort()),
           started(false),
           nextConnId_(1),
           threadPool_(new EventLoopThreadPool(loop)),
@@ -50,7 +50,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr) {
     std::string connName = name_ + buf;
 
     LOG_INFO << "TcpServer::newConnection [" << name_ << "] - new connection ["
-             << connName << "] from " << peerAddr.toHostPort();
+             << connName << "] from " << peerAddr.toIpPort();
     InetAddress localAddr(sockets::getLocalAddr(sockfd));
     // FIXME: poll with zero timeout to douvle confirm the new connection'
     EventLoop *ioLoop = threadPool_->getNextLoop();

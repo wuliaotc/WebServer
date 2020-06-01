@@ -8,31 +8,46 @@
 #include <netinet/in.h>
 
 #include <string>
+#include <base/copyable.h>
+#include <base/StringPiece.h>
+#include "net/SocketsOps.h"
 
 namespace reactor {
     namespace net {
-        class InetAddress {
+        class InetAddress : public copyable {
             //儲存 sockaddr_in
         public:
-            explicit InetAddress(uint16_t port);
+            explicit InetAddress(uint16_t port = 0, bool loopbackOnly = false,
+                                 bool ipv6 = false);
 
-            InetAddress(const std::string &ip, uint16_t port);
+            InetAddress(const StringArg &ip, uint16_t port, bool ipv6 = false);
 
-            InetAddress(const struct sockaddr_in &addr) : addr_(addr) {}
+            explicit InetAddress(const struct sockaddr_in &addr) : addr_(
+                    addr) {}
 
-            InetAddress(const InetAddress &) = default;
+            explicit InetAddress(const struct sockaddr_in6 &addr) : addr6_(
+                    addr) {}
 
-            InetAddress &operator=(const InetAddress &) = default;
+            sa_family_t family() const { return addr_.sin_family; }
 
-            std::string toHostPort() const;
+            std::string toIpPort() const;
 
-            const struct sockaddr_in &getSockAddrInet() const { return addr_; }
+            const struct sockaddr *getSockAddrInet() const {
+                return static_cast<const sockaddr *>(implicit_cast<const void *>(
+                        &addr6_));
+            }
+
 
             void
             setSockAddrInet(const struct sockaddr_in &addr) { addr_ = addr; }
-
+            void
+            setSockAddrInet6(const struct sockaddr_in6 &addr6) { addr6_ = addr6; }
         private:
-            sockaddr_in addr_;
+            union {
+                sockaddr_in addr_;
+                sockaddr_in6 addr6_;
+            };
+
         };
     } // namespace net
 } // namespace reactor
