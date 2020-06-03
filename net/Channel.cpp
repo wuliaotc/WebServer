@@ -12,23 +12,43 @@
 
 using namespace reactor;
 using namespace reactor::net;
-const int Channel::KNoneEvent = 0;
-const int Channel::KReadEvent = POLLIN | POLLPRI;
-const int Channel::KWirteEvent = POLLOUT;
+const int Channel::kNoneEvent = 0;
+const int Channel::kReadEvent = POLLIN | POLLPRI;
+const int Channel::kWirteEvent = POLLOUT;
 
 Channel::Channel(EventLoop *loop, int fd)
-        : loop_(loop),
+        : tied_(false),
+          loop_(loop),
           fd_(fd),
-          events_(Channel::KNoneEvent),
-          revents_(Channel::KNoneEvent),
+          events_(Channel::kNoneEvent),
+          revents_(Channel::kNoneEvent),
           index_(-1),
-          eventHandling_(false) {}
+          eventHandling_(false),
+          addedToLoop_(false){}
 
-Channel::~Channel() { assert(!eventHandling_); }
+Channel::~Channel() {
+    //TODO: fixme
+    // FIXME will abort()!!
+    assert(!eventHandling_);
+    assert(!addedToLoop_);
+}
 
-void Channel::update() { loop_->updateChannel(this); }
-
-void Channel::handleEvent(reactor::Timestamp receiveTime) {
+void Channel::update() {
+    addedToLoop_=true;
+    loop_->updateChannel(this);
+}
+void Channel::handleEvent(Timestamp receiveTime) {
+  if(tied_){
+    std::shared_ptr<void> guard=tie_.lock();
+    if(guard){
+      handleEventWithGuard(receiveTime);
+    }
+  }
+  else{
+    handleEventWithGuard(receiveTime);
+  }
+}
+void Channel::handleEventWithGuard(reactor::Timestamp receiveTime) {
     eventHandling_ = true;
     if (revents_ & POLLNVAL) {      // fd invalid
         LOG_WARN << "Channel::handle_event() POLLNVAL";
@@ -47,5 +67,10 @@ void Channel::handleEvent(reactor::Timestamp receiveTime) {
         if (writeCallback_) writeCallback_();
     }
     eventHandling_ = false;
+}
+void Channel::remove() {
+    assert(isNoneEvent());
+    addedToLoop_=false;
+    loop_->removeChannel(this);
 }
 
