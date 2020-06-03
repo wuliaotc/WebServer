@@ -4,8 +4,9 @@
 
 #ifndef WEBSERVER_HTTPSERVER_H
 #define WEBSERVER_HTTPSERVER_H
-
+#include <unordered_set>
 #include "net/TcpServer.h"
+
 namespace reactor
 {
     namespace net
@@ -22,9 +23,9 @@ namespace reactor
         public:
             using HttpCallback=std::function<void (const HttpRequest&,
                                         HttpResponse*)> ;
-            /*const string& name,*/
+            // if idleSeconds =0 no check for idle connection
             HttpServer(EventLoop* loop,
-                       const InetAddress& listenAddr);
+                       const InetAddress& listenAddr,int idleSeconds=0);
 
             EventLoop* getLoop() const { return server_.getLoop(); }
 
@@ -42,12 +43,37 @@ namespace reactor
             void start();
 
         private:
+            void onTimer();
             void onConnection(const TcpConnectionPtr& conn);
             void onMessage(const TcpConnectionPtr& conn,
                            Buffer* buf,
                            Timestamp receiveTime);
             void onRequest(const TcpConnectionPtr&, const HttpRequest&);
+            using WeakTcpConnectionPtr=std::weak_ptr<TcpConnection>;
 
+            struct Entry:reactor::copyable{
+                explicit Entry(const WeakTcpConnectionPtr& weakConn)
+                :weakConn_(weakConn){
+
+                }
+                ~Entry(){
+                    TcpConnectionPtr conn_=weakConn_.lock();
+                    if(conn_){
+                        conn_->shutdown();
+                    }
+                }
+                WeakTcpConnectionPtr weakConn_;
+            };
+            using EntryPtr=std::shared_ptr<Entry>;
+            using WeakEntryPtr=std::weak_ptr<Entry>;
+            using TimeWheelBucket=std::unordered_set<EntryPtr>;
+            using TimeWheel=std::vector<TimeWheelBucket>;
+            int timePointer_;
+            TimeWheel timeWheel_;
+//            //clean
+//            void dumpConnectionBuckets()const;
+            size_t timeWheelEnd()const{return (timePointer_+idleSecond_-1)%idleSecond_;}
+            const int idleSecond_;
             TcpServer server_;
             HttpCallback httpCallback_;
         };
