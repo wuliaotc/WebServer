@@ -76,7 +76,12 @@ namespace reactor {
 
             boost::any* getMutableContext()
             { return &context_; }
-
+            //only for HttpServer internal use
+            void setWeakEntryPtr(const boost::any& weakEntryPtr)
+            { weakEntryPtr_ = weakEntryPtr; }
+            //only for HttpServer internal use
+            const boost::any& getWeakEntryPtr() const
+            { return weakEntryPtr_; }
         private:
             enum StateE {
                 kConnecting, kConnected, kDisconnecting, kDisconnected
@@ -106,7 +111,8 @@ namespace reactor {
             Buffer inputBuffer_;
             Buffer outputBuffer_;
             boost::any context_;
-
+            //FIXME:hack only for HttpServer
+            boost::any weakEntryPtr_;
             ConnectionCallback connectionCallback_;
             MessageCallback messageCallback_;
             CloseCallback closeCallback_;

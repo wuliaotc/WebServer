@@ -34,7 +34,11 @@ TcpConnection::TcpConnection(EventLoop *loop, const std::string &name,
     socket_->setTcpKeepAlive(true);
 }
 
-TcpConnection::~TcpConnection() {}
+TcpConnection::~TcpConnection() {
+    LOG_DEBUG<<"~TcpConnection() "<<name_<<"at "<< this
+            <<" fd="<<channel_->fd();
+    assert(state_==kDisconnected);
+}
 
 void TcpConnection::setConnectionCallback(const ConnectionCallback &cb) {
     connectionCallback_ = cb;
@@ -125,7 +129,7 @@ void TcpConnection::ConnectDestroyed() {
     channel_->disableAll();
     connectionCallback_(shared_from_this());
 
-    loop_->removeChannel(channel_.get());
+    channel_->remove();
 }
 
 void TcpConnection::shutdown() {
