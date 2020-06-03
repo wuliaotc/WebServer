@@ -15,7 +15,7 @@ void HttpResponse::appendToBuffer(Buffer *output) const
     output->append(statusMessage_);
     output->append("\r\n");
     if(closeConnection_){
-        output->append("Connection:close\r\n");
+        output->append("Connection: close\r\n");
     }
     else{
         snprintf(buf,sizeof(buf),"Content-Length: %zd\r\n",body_.size());
@@ -26,7 +26,7 @@ void HttpResponse::appendToBuffer(Buffer *output) const
     for(auto&&header:headers_)
     {
         output->append(header.first);
-        output->append(":");
+        output->append(": ");
         output->append(header.second);
         output->append("\r\n");
 

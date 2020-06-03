@@ -6,6 +6,7 @@
 #define WEBSERVER_HTTPREQUEST_H
 
 #include <map>
+#include "net/Buffer.h"
 #include "base/copyable.h"
 #include "base/Timestamp.h"
 #include "base/Types.h"
@@ -30,7 +31,8 @@ namespace reactor {
 
             HttpRequest()
                     : method_(kInvalid),
-                      version_(kUnknown) {}
+                      version_(kUnknown),
+                      content_len_(-1){}
 
             void setVersion(Version v) {
                 version_ = v;
@@ -58,7 +60,6 @@ namespace reactor {
                 }
                 return method_ != kInvalid;
             }
-
             Method method() const {
                 return method_;
             }
@@ -128,7 +129,9 @@ namespace reactor {
                 }
                 return result;
             }
-
+            bool hasHeader(const string&field){
+                return headers_.find(field)!=headers_.end();
+            }
             const std::map<string, string> &headers() const {
                 return headers_;
             }
@@ -141,11 +144,30 @@ namespace reactor {
                 std::swap(receiveTime_, rhs.receiveTime_);
                 std::swap(headers_, rhs.headers_);
             }
-
+            int getConten_len ()const{
+                return content_len_;
+            }
+            // assert(len>0)
+            void setConten_len (int len){
+                assert(len>0);
+                content_len_ = len;
+            }
+            //should be call only once
+            void parseContent(net::Buffer *buf){
+                assert(content_len_>0);
+                assert(content_.readableBytes()==0);
+                assert(buf->readableBytes()>=content_len_);
+                content_.append(buf->peek(),content_len_);
+                buf->retrieve(content_len_);
+                assert(content_.readableBytes()==content_len_);
+            }
 
         private:
             Version version_;
             Method method_;
+            //FIXME:int will limit request content max len
+            int content_len_;
+            Buffer content_;
             string path_;
             string query_;
             Timestamp receiveTime_;
