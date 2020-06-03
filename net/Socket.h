@@ -36,7 +36,7 @@ namespace reactor {
             void shutdownWrite();
 
         private:
-            int sockfd_;
+            const int sockfd_;
         };
     } // namespace net
 } // namespace reactor
