@@ -7,6 +7,7 @@
 #include "net/http/HttpResponse.h"
 #include "net/http/HttpRequest.h"
 #include "net/EventLoop.h"
+#include "net/http//HttpUriRouter.h"
 #include "base/Logging.h"
 #include <unistd.h>
 #include <fcntl.h>
@@ -36,20 +37,8 @@ enum MimeType {
     UNKOWNMIME,
     MIME_NUM
 };
-const char *mimeStr[MIME_NUM] = {
-        "application/x-",
-        "text/css",
-        "text/html",
-        "application/x-javascript",
-        "application/x-bmp",
-        "image/x-icon",
-        "image/jpeg",
-        "image/jpeg",
-        "application/x-jpg",
-        "video/mpeg4",
-        "application/pdf",
-        "text/plain"
-};
+extern const char *mimeStr[MIME_NUM];
+
 const std::unordered_map<std::string, MimeType> mimeMap
         {
                 {".",     DOT},
@@ -83,107 +72,20 @@ struct File {
               mime_(UNKOWNMIME) {}
 };
 
+void onRequest(const HttpRequest &req, HttpResponse *resp);
+
+void defaultHandler(const HttpRequest &req, const StringPiece &decodedUrl,
+                    HttpResponse *resp);
+
+void response404(HttpResponse *resp);
+
+
 std::unordered_map<std::string, File> fileMap;
-
-void onRequest(const HttpRequest &req, HttpResponse *resp) {
-    std::cout << "Headers " << req.methodString() << " " << req.path()
-              << std::endl;
-    if (!benchmark) {
-        const std::map<string, string> &headers = req.headers();
-        for (const auto &header : headers) {
-            std::cout << header.first << ": " << header.second << std::endl;
-        }
-    }
-    string path = req.path();
-    assert(path.size()>0);
-    if (path[path.size()-1]=='/') {
-        //FIXME:hack
-        path += "index.html";
-        if (faccessat(AT_FDCWD, path.c_str()+1, R_OK, 0) == 0) {
-            LOG_INFO<<path<<" existed,will change to index file";
-        } else {
-            LOG_INFO<<path<<" not existed,resp defalut home";
-            resp->setStatusCode(HttpResponse::k200Ok);
-            resp->setStatusMessage("OK");
-            resp->setContentType("text/html");
-            resp->addHeader("Server", "Muduo");
-            string now = Timestamp::now().toFormattedString();
-            resp->setBody("<html><head><title>This is title</title></head>"
-                          "<body><h1>Hello</h1>Now is " + now +
-                          "</body></html>");
-            return ;
-        }
-
-    }
-
-    if (path == "/favicon.ico") {
-        resp->setStatusCode(HttpResponse::k200Ok);
-        resp->setStatusMessage("OK");
-        resp->setContentType("image/png");
-        resp->setBody(string(favicon, sizeof favicon));
-    } else if (path == "/hello") {
-        resp->setStatusCode(HttpResponse::k200Ok);
-        resp->setStatusMessage("OK");
-        resp->setContentType("text/plain");
-        resp->addHeader("Server", "Muduo");
-        resp->setBody("hello, world!\n");
-    } else if (std::find(path.begin(), path.end(), '.') - path.begin() !=
-               1) {// /. /..
-        //FIXME:hack
-        // and it must be a small file
-        if (fileMap.find(path) == fileMap.end() &&
-            ::faccessat(AT_FDCWD, path.c_str() + 1, R_OK, 0) == 0) {
-            struct stat stat_;
-            int fd = ::openat(AT_FDCWD, path.c_str() + 1, O_RDONLY);
-            if (fd != -1 && fstat(fd, &stat_) == 0) {
-                File file;
-                file.fd = fd;
-                file.size_ = stat_.st_size;
-                file.modifyTime_ = stat_.st_mtim.tv_sec;
-                size_t dot = path.rfind(".");
-                auto it=mimeMap.find(path.substr(dot));
-                if (it!=mimeMap.end()){
-                    file.mime_=it->second;
-                }
-                fileMap[path]=file;
-            }
-        }
-        if (fileMap.find(path) != fileMap.end()) {
-            File &f = fileMap[path];
-            int err = 0;
-            if (f.fd != -1 && f.buf_.readableBytes() != f.size_) {
-                size_t len = f.buf_.readFd(f.fd, &err);
-                if (err != 0) {
-                    LOG_ERROR << "readFd err:" << strerror_tl(err);
-                }
-                if (len != 0 && f.size_ == f.buf_.readableBytes()) {
-                    LOG_INFO << "read " << f.size_ << "bytes finished,fd="
-                             << f.fd;
-                }
-            }
-            resp->setStatusCode(HttpResponse::k200Ok);
-            resp->setStatusMessage("OK");
-            resp->setContentType(mimeStr[f.mime_]);
-            resp->addHeader("Server", "Muduo");
-            resp->setBody(string(f.buf_.peek(), implicit_cast<const char *>(
-                    f.buf_.beginWrite())));
-        } else {
-            resp->setStatusCode(HttpResponse::k404NotFound);
-            resp->setStatusMessage("Not Found");
-            resp->setCloseConnection(true);
-        }
-    } else {
-        resp->setStatusCode(HttpResponse::k404NotFound);
-        resp->setStatusMessage("Not Found");
-        resp->setCloseConnection(true);
-    }
-}
-
-void sendFile() {
-
-}
+HttpUriRouter *g_router;
 
 int main() {
+    g_router = new HttpUriRouter(defaultHandler);
+
     EventLoop loop;
     InetAddress listenAddr(8080);
     HttpServer server_(&loop, listenAddr, 30);
@@ -198,6 +100,20 @@ int main() {
     return 0;
 }
 
+const char *mimeStr[MIME_NUM] = {
+        "application/x-",
+        "text/css",
+        "text/html",
+        "application/x-javascript",
+        "application/x-bmp",
+        "image/x-icon",
+        "image/jpeg",
+        "image/jpeg",
+        "application/x-jpg",
+        "video/mpeg4",
+        "application/pdf",
+        "text/plain"
+};
 char favicon[555] = {
         '\x89', 'P', 'N', 'G', '\xD', '\xA', '\x1A', '\xA',
         '\x0', '\x0', '\x0', '\xD', 'I', 'H', 'D', 'R',
@@ -270,3 +186,81 @@ char favicon[555] = {
         '\x0', '\x0', '\x0', 'I', 'E', 'N', 'D', '\xAE',
         'B', '\x60', '\x82',
 };
+
+void response404(HttpResponse *resp) {
+    resp->setCloseConnection(true);
+    resp->setStatusCode(reactor::net::HttpResponse::k404NotFound);
+    resp->setStatusMessage("404 Not Found");
+}
+
+void defaultHandler(const HttpRequest &req, const StringPiece &decodedUrl,
+                    HttpResponse *resp) {
+    string path = decodedUrl.as_string();
+    assert(path.size() > 0);
+    bool success = false;
+    if (path[path.size() - 1] == '/') {
+        //FIXME:hack
+        path += "index.html";
+        if (faccessat(AT_FDCWD, path.c_str() + 1, R_OK, 0) == 0) {
+            LOG_INFO << path << " existed,will change to index file";
+        }
+    }
+    if (std::find(path.begin(), path.end(), '.') - path.begin() != 1) {// /. /..
+        //FIXME:hack
+        // and it must be a small file
+        if (fileMap.find(path) == fileMap.end() &&
+            ::faccessat(AT_FDCWD, path.c_str() + 1, R_OK, 0) == 0) {
+            struct stat stat_;
+            int fd = ::openat(AT_FDCWD, path.c_str() + 1, O_RDONLY);
+            if (fd != -1 && fstat(fd, &stat_) == 0) {
+                File file;
+                file.fd = fd;
+                file.size_ = stat_.st_size;
+                file.modifyTime_ = stat_.st_mtim.tv_sec;
+                size_t dot = path.rfind(".");
+                auto it = mimeMap.find(path.substr(dot));
+                if (it != mimeMap.end()) {
+                    file.mime_ = it->second;
+                }
+                fileMap[path] = file;
+            }
+        }
+        if (fileMap.find(path) != fileMap.end()) {
+            File &f = fileMap[path];
+            int err = 0;
+            if (f.fd != -1 && f.buf_.readableBytes() != f.size_) {
+                size_t len = f.buf_.readFd(f.fd, &err);
+                if (err != 0) {
+                    LOG_ERROR << "readFd err:" << strerror_tl(err);
+                }
+                if (len != 0 && f.size_ == f.buf_.readableBytes()) {
+                    LOG_INFO << "read " << f.size_
+                             << "bytes finished,fd="
+                             << f.fd;
+                }
+            }
+            resp->setStatusCode(HttpResponse::k200Ok);
+            resp->setStatusMessage("OK");
+            resp->setContentType(mimeStr[f.mime_]);
+            resp->addHeader("Server", "Muduo");
+            resp->setBody(
+                    string(f.buf_.peek(), implicit_cast<const char *>(
+                            f.buf_.beginWrite())));
+            success = true;
+        }
+    }
+    if (!success)
+        response404(resp);
+}
+
+void onRequest(const HttpRequest &req, HttpResponse *resp) {
+    std::cout << "Headers " << req.methodString() << " " << req.path()
+              << std::endl;
+    if (!benchmark) {
+        const std::map<string, string> &headers = req.headers();
+        for (const auto &header : headers) {
+            std::cout << header.first << ": " << header.second << std::endl;
+        }
+    }
+    g_router->Router(req, resp);
+}
